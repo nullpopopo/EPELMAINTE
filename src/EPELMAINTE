@@ -1,0 +1,68 @@
+#!/bin/bash
+LANG=C
+
+ETC=${HOME}/etc
+CONF=${ETC}/epel.conf
+REPOD=/etc/yum.repos.d
+REPOFILE=epel.repo
+VERSION=$(cat /etc/redhat-release | sed -e 's/[a-zA-Z\(\)\ ]//g;s/\.[0-9]//g')
+
+#------------------------------------------------------------------------------#
+cd /var/tmp
+if [ ! -f RPM-GPG-KEY-EPEL-${VERSION} ]
+then
+  wget http://ftp.riken.jp/Linux/fedora/epel/RPM-GPG-KEY-EPEL-${VERSION}
+  sudo rpm --import RPM-GPG-KEY-EPEL-${VERSION}
+fi
+#------------------------------------------------------------------------------#
+MAKECONF() {
+cat << '_EOF_' > $CONF
+[epel]
+name=EPEL RPM Repository for Red Hat Enterprise Linux
+baseurl=http://ftp.riken.jp/Linux/fedora/epel/_VERSION_/$basearch/
+enabled=0
+gpgcheck=1
+_EOF_
+}
+#------------------------------------------------------------------------------#
+[ ! -d ${ETC} ] && mkdir -p ${ETC}
+[ ! -f ${CONF} ] && MAKECONF
+#------------------------------------------------------------------------------#
+
+case $1 in
+  [iI][nN][sS][tT][aA][lL][lL])
+    if [ -f ${CONF} ]
+    then
+      sudo cp -p ${CONF} ${REPOD}/${REPOFILE}
+      sudo sed -i -e s/_VERSION_/$(echo ${VERSION})/g ${REPOD}/${REPOFILE}
+      sudo chown root:root ${REPOD}/${REPOFILE}
+    else
+      MAKECONF && sudo cp -p ${CONF} ${REPOD}/${REPOFILE}
+      sudo sed -i -e s/_VERSION_/$(echo ${VERSION})/g ${REPOD}/${REPOFILE}
+      sudo chown root:root ${REPOD}/${REPOFILE}
+    fi
+    ;;
+  [uU][nN][iI][nN][sS][tT][aA][lL][lL])
+      [ -f ${REPOD}/${REPOFILE} ] && sudo rm -f ${REPOD}/${REPOFILE}
+    ;;
+  [eE][nN][aA][bB][lL][eE])
+      if [ -f ${REPOD}/${REPOFILE} ]
+      then
+        sudo sed -i -e 's/enabled=0/enabled=1/g' ${REPOD}/${REPOFILE}
+      else
+        $0 install
+        sudo sed -i -e 's/enabled=0/enabled=1/g' ${REPOD}/${REPOFILE}
+      fi
+    ;;
+  [dD][iI][sS][aA][bB][lL][eE])
+      if [ -f ${REPOD}/${REPOFILE} ]
+      then
+        sudo sed -i -e 's/enabled=1/enabled=0/g' ${REPOD}/${REPOFILE}
+      else
+        $0 install
+      fi
+    ;;
+  *)
+    echo "USAGE: ${PROG} {install|uninstall|enable|disable}"
+    ;;
+esac
