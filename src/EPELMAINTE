@@ -59,7 +59,7 @@ case $1 in
       then
         sudo sed -i -e 's/enabled=1/enabled=0/g' ${REPOD}/${REPOFILE}
       else
-        $0 install
+        :
       fi
     ;;
   *)
